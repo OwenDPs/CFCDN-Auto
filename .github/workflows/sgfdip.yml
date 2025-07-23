@@ -8,6 +8,7 @@ on:
 jobs:
   update_ips_and_dns:
     runs-on: ubuntu-latest
+    environment: env  # 引用名为 'env' 的环境
 
     steps:
       - name: Checkout repository
@@ -26,8 +27,8 @@ jobs:
       - name: Run Python script to update sgfd_ips.txt and DNS
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          CF_ZONE_YID: ${{ secrets.CF_ZONE_YID }}
-          CF_DNS_NAME: ${{ secrets.CF_DNS_NAME }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_DOMAIN_NAME: ${{ secrets.CF_DOMAIN_NAME }}
         run: python sgfdip.py
 
       - name: Configure Git
