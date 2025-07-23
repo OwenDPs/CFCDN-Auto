@@ -4,8 +4,8 @@ from ipwhois import IPWhois
 
 # 配置
 CF_API_KEY = os.getenv('CF_API_KEY')
-CF_ZONE_YID = os.getenv('CF_ZONE_YID')
-CF_DNS_NAME = os.getenv('CF_DNS_NAME')
+CF_ZONE_ID = os.getenv('CF_ZONE_ID')  # 修正环境变量名
+CF_DOMAIN_NAME = os.getenv('CF_DOMAIN_NAME')  # 修正环境变量名
 FILE_PATH = 'sgfd_ips.txt'
 SGCS_FILE_PATH = 'CloudflareST/sgcs.txt'
 
@@ -157,45 +157,104 @@ def write_to_file(ip_addresses):
 
 # 第四步：清除指定Cloudflare域名的所有DNS记录
 def clear_dns_records():
+    # 检查必要的环境变量
+    if not CF_API_KEY or not CF_ZONE_ID or not CF_DOMAIN_NAME:
+        print("警告: Cloudflare API配置不完整，跳过DNS记录清除")
+        print(f"  CF_API_KEY: {'已设置' if CF_API_KEY else '未设置'}")
+        print(f"  CF_ZONE_ID: {'已设置' if CF_ZONE_ID else '未设置'}")
+        print(f"  CF_DOMAIN_NAME: {'已设置' if CF_DOMAIN_NAME else '未设置'}")
+        return
+
     headers = {
         'Authorization': f'Bearer {CF_API_KEY}',
         'Content-Type': 'application/json',
     }
 
     # 获取现有的DNS记录
-    dns_records_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_YID}/dns_records'
-    dns_records = requests.get(dns_records_url, headers=headers).json()
+    dns_records_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records'
+    try:
+        response = requests.get(dns_records_url, headers=headers)
+        print(f"DNS记录查询响应状态码: {response.status_code}")
 
-    # 删除旧的DNS记录
-    for record in dns_records['result']:
-        if record['name'] == CF_DNS_NAME:
-            delete_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_YID}/dns_records/{record["id"]}'
-            requests.delete(delete_url, headers=headers)
+        if response.status_code != 200:
+            print(f"获取DNS记录失败: {response.text}")
+            return
+
+        dns_records = response.json()
+
+        if not dns_records or 'result' not in dns_records:
+            print("DNS记录响应格式异常或为空")
+            return
+
+        print(f"找到 {len(dns_records['result'])} 条DNS记录")
+
+        # 删除旧的DNS记录
+        deleted_count = 0
+        for record in dns_records['result']:
+            if record['name'] == CF_DOMAIN_NAME:
+                delete_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records/{record["id"]}'
+                delete_response = requests.delete(delete_url, headers=headers)
+                if delete_response.status_code == 200:
+                    print(f"成功删除DNS记录: {record['name']} -> {record['content']}")
+                    deleted_count += 1
+                else:
+                    print(f"删除DNS记录失败: {delete_response.text}")
+
+        print(f"总共删除了 {deleted_count} 条DNS记录")
+
+    except Exception as e:
+        print(f"清除DNS记录时出错: {e}")
 
 # 第五步：更新Cloudflare域名的DNS记录为sgfd_ips.txt文件中的IP地址
 def update_dns_records():
-    with open(FILE_PATH, 'r') as f:
-        ips_to_update = [line.split('#')[0].strip() for line in f]
+    # 检查必要的环境变量
+    if not CF_API_KEY or not CF_ZONE_ID or not CF_DOMAIN_NAME:
+        print("警告: Cloudflare API配置不完整，跳过DNS记录更新")
+        return
+
+    try:
+        with open(FILE_PATH, 'r', encoding='utf-8') as f:
+            ips_to_update = [line.split('#')[0].strip() for line in f if line.strip()]
+    except Exception as e:
+        print(f"读取IP文件时出错: {e}")
+        return
+
+    if not ips_to_update:
+        print("没有找到要更新的IP地址")
+        return
 
     headers = {
         'Authorization': f'Bearer {CF_API_KEY}',
         'Content-Type': 'application/json',
     }
 
-    dns_records_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_YID}/dns_records'
+    dns_records_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records'
+    success_count = 0
+
     for ip in ips_to_update:
+        if not ip:  # 跳过空行
+            continue
+
         data = {
             'type': 'A',
-            'name': CF_DNS_NAME,
+            'name': CF_DOMAIN_NAME,
             'content': ip,
             'ttl': 60,
             'proxied': False,
         }
-        response = requests.post(dns_records_url, headers=headers, json=data)
-        if response.status_code == 200:
-            print(f"Successfully updated DNS record for {CF_DNS_NAME} to {ip}")
-        else:
-            print(f"Failed to update DNS record for {CF_DNS_NAME} to {ip}. Status code: {response.status_code}")
+
+        try:
+            response = requests.post(dns_records_url, headers=headers, json=data)
+            if response.status_code == 200:
+                print(f"成功更新DNS记录: {CF_DOMAIN_NAME} -> {ip}")
+                success_count += 1
+            else:
+                print(f"更新DNS记录失败: {CF_DOMAIN_NAME} -> {ip}, 状态码: {response.status_code}")
+                print(f"错误详情: {response.text}")
+        except Exception as e:
+            print(f"更新DNS记录时出错: {ip}, 错误: {e}")
+
+    print(f"DNS记录更新完成，成功更新 {success_count}/{len(ips_to_update)} 条记录")
 
 # 主函数：按顺序执行所有步骤
 def main():
