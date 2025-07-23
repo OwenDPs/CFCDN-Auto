@@ -231,7 +231,7 @@ def update_dns_records():
     dns_records_url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records'
     success_count = 0
 
-    for ip in ips_to_update:
+    for ip in ips_to_update[:2]:  # 只取前两个IP
         if not ip:  # 跳过空行
             continue
 
