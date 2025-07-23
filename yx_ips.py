@@ -7,7 +7,6 @@ import re
 CF_API_KEY = os.getenv('CF_API_KEY')
 CF_ZONE_ID = os.getenv('CF_ZONE_ID')
 CF_DOMAIN_NAME = os.getenv('CF_DOMAIN_NAME')
-CF_API_EMAIL = os.getenv('CF_API_EMAIL')
 
 # 定义请求头
 headers = {
@@ -154,10 +153,17 @@ def main():
 
 # 清空CF_DOMAIN_NAME的所有DNS记录
 def clear_dns_records():
+    # 检查必要的环境变量
+    if not CF_API_KEY or not CF_ZONE_ID or not CF_DOMAIN_NAME:
+        print("警告: Cloudflare API配置不完整，跳过DNS记录清除")
+        print(f"  CF_API_KEY: {'已设置' if CF_API_KEY else '未设置'}")
+        print(f"  CF_ZONE_ID: {'已设置' if CF_ZONE_ID else '未设置'}")
+        print(f"  CF_DOMAIN_NAME: {'已设置' if CF_DOMAIN_NAME else '未设置'}")
+        return
+
     url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records?name={CF_DOMAIN_NAME}"
     headers = {
         "Authorization": f"Bearer {CF_API_KEY}",
-        "X-Auth-Email": CF_API_EMAIL,
         "Content-Type": "application/json"
     }
 
@@ -176,11 +182,15 @@ def clear_dns_records():
 
 # 添加新的IPv4地址为DNS记录
 def add_dns_record(ip):
+    # 检查必要的环境变量
+    if not CF_API_KEY or not CF_ZONE_ID or not CF_DOMAIN_NAME:
+        print("警告: Cloudflare API配置不完整，跳过DNS记录添加")
+        return
+
     print(f"Adding DNS record for IP: {ip}")
     url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records"
     headers = {
         "Authorization": f"Bearer {CF_API_KEY}",
-        "X-Auth-Email": CF_API_EMAIL,
         "Content-Type": "application/json"
     }
     data = {
@@ -198,55 +208,24 @@ def add_dns_record(ip):
 
 def test_cf_api():
     """测试 Cloudflare API 连接"""
-    url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
-    headers = {
-        "Authorization": f"Bearer {CF_API_KEY}",
-        "X-Auth-Email": CF_API_EMAIL,
-        "Content-Type": "application/json"
-    }
-    
-    response = requests.get(url, headers=headers)
-    print(f"API Test - Status: {response.status_code}")
-    print(f"API Test - Response: {response.text}")
-    
-    if response.status_code == 200:
-        zone_info = response.json()
-        print(f"Zone Name: {zone_info['result']['name']}")
-        return True
-    return False
+    # 检查必要的环境变量
+    if not CF_API_KEY or not CF_ZONE_ID:
+        print("警告: Cloudflare API配置不完整")
+        print(f"  CF_API_KEY: {'已设置' if CF_API_KEY else '未设置'}")
+        print(f"  CF_ZONE_ID: {'已设置' if CF_ZONE_ID else '未设置'}")
+        print(f"  CF_DOMAIN_NAME: {'已设置' if CF_DOMAIN_NAME else '未设置'}")
+        return False
 
-def test_cf_api():
-    """测试 Cloudflare API 连接"""
     url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
     headers = {
         "Authorization": f"Bearer {CF_API_KEY}",
-        "X-Auth-Email": CF_API_EMAIL,
         "Content-Type": "application/json"
     }
-    
-    response = requests.get(url, headers=headers)
-    print(f"API Test - Status: {response.status_code}")
-    print(f"API Test - Response: {response.text}")
-    
-    if response.status_code == 200:
-        zone_info = response.json()
-        print(f"Zone Name: {zone_info['result']['name']}")
-        return True
-    return False
 
-def test_cf_api():
-    """测试 Cloudflare API 连接"""
-    url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
-    headers = {
-        "Authorization": f"Bearer {CF_API_KEY}",
-        "X-Auth-Email": CF_API_EMAIL,
-        "Content-Type": "application/json"
-    }
-    
     response = requests.get(url, headers=headers)
     print(f"API Test - Status: {response.status_code}")
     print(f"API Test - Response: {response.text}")
-    
+
     if response.status_code == 200:
         zone_info = response.json()
         print(f"Zone Name: {zone_info['result']['name']}")
