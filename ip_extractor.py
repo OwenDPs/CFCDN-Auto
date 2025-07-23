@@ -24,6 +24,12 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from typing import List, Dict, Optional, Tuple
+try:
+    from ipwhois import IPWhois
+    IPWHOIS_AVAILABLE = True
+except ImportError:
+    IPWHOIS_AVAILABLE = False
+    print("警告: ipwhois 模块不可用，地区过滤功能将受限")
 
 
 class IPExtractor:
@@ -53,8 +59,38 @@ class IPExtractor:
 
         # 支持的文本文件URL（纯IP列表）
         self.text_urls = [
-            "https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt"
+            "https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt",
+            "https://ipdb.api.030101.xyz/?type=cfv4;cfv6;proxy"
         ]
+
+        # 地区代码映射
+        self.region_codes = {
+            'SG': ['SG', 'Singapore', '新加坡', 'singapore'],
+            'TW': ['TW', 'Taiwan', '台湾', '臺灣', 'taiwan'],
+            'JP': ['JP', 'Japan', '日本', 'japan'],
+            'HK': ['HK', 'Hong Kong', '香港', 'hongkong', 'hong kong'],
+            'KR': ['KR', 'Korea', '韩国', '南韩', 'korea', 'south korea'],
+            'US': ['US', 'United States', '美国', 'america', 'usa'],
+            'UK': ['UK', 'GB', 'United Kingdom', '英国', 'britain'],
+            'DE': ['DE', 'Germany', '德国', 'deutschland'],
+            'FR': ['FR', 'France', '法国', 'france'],
+            'CA': ['CA', 'Canada', '加拿大', 'canada'],
+            'AU': ['AU', 'Australia', '澳大利亚', 'australia'],
+            'IN': ['IN', 'India', '印度', 'india'],
+            'TH': ['TH', 'Thailand', '泰国', 'thailand'],
+            'MY': ['MY', 'Malaysia', '马来西亚', 'malaysia'],
+            'ID': ['ID', 'Indonesia', '印尼', 'indonesia'],
+            'PH': ['PH', 'Philippines', '菲律宾', 'philippines'],
+            'VN': ['VN', 'Vietnam', '越南', 'vietnam'],
+            'RU': ['RU', 'Russia', '俄罗斯', 'russia'],
+            'BR': ['BR', 'Brazil', '巴西', 'brazil'],
+            'NL': ['NL', 'Netherlands', '荷兰', 'netherlands'],
+            'CH': ['CH', 'Switzerland', '瑞士', 'switzerland'],
+            'SE': ['SE', 'Sweden', '瑞典', 'sweden'],
+            'NO': ['NO', 'Norway', '挪威', 'norway'],
+            'FI': ['FI', 'Finland', '芬兰', 'finland'],
+            'DK': ['DK', 'Denmark', '丹麦', 'denmark']
+        }
 
         # 支持的API接口
         self.api_sources = [
@@ -461,6 +497,157 @@ class IPExtractor:
                 ip_addresses.append(ip)
 
         return ip_addresses
+
+    def get_ip_region(self, ip_address: str) -> Optional[str]:
+        """
+        获取IP地址的地区代码
+
+        Args:
+            ip_address: IP地址
+
+        Returns:
+            地区代码（如 'SG', 'TW', 'JP'），如果无法确定则返回None
+        """
+        if not IPWHOIS_AVAILABLE:
+            print(f"警告: 无法查询IP {ip_address} 的地区信息，ipwhois模块不可用")
+            return None
+
+        try:
+            # 使用IPWhois查询IP地理信息
+            obj = IPWhois(ip_address)
+            results = obj.lookup_rdap()
+
+            if not results:
+                return None
+
+            # 尝试从network字段获取国家代码
+            country = None
+            if 'network' in results and results['network']:
+                country = results['network'].get('country')
+
+            # 如果没有找到，尝试从其他字段获取
+            if not country and 'objects' in results:
+                for _, obj_data in results['objects'].items():
+                    if 'contact' in obj_data and 'address' in obj_data['contact']:
+                        for addr in obj_data['contact']['address']:
+                            if 'value' in addr:
+                                address_text = addr['value'].lower()
+                                # 检查地址中是否包含地区关键词
+                                for region_code, keywords in self.region_codes.items():
+                                    for keyword in keywords:
+                                        if keyword.lower() in address_text:
+                                            return region_code
+
+            # 检查网络名称是否包含地区标识
+            if not country and 'network' in results and results['network']:
+                network_name = results['network'].get('name', '').lower()
+                for region_code, keywords in self.region_codes.items():
+                    for keyword in keywords:
+                        if keyword.lower() in network_name:
+                            return region_code
+
+            return country.upper() if country else None
+
+        except Exception as e:
+            print(f"查询IP {ip_address} 地区信息时出错: {e}")
+            return None
+
+    def filter_by_regions(self, ip_list: List[str], target_regions: List[str],
+                         max_workers: int = 10, show_progress: bool = True) -> List[str]:
+        """
+        根据地区过滤IP地址
+
+        Args:
+            ip_list: IP数据列表
+            target_regions: 目标地区代码列表（如 ['SG', 'TW', 'JP']）
+            max_workers: 最大并发查询数
+            show_progress: 是否显示进度
+
+        Returns:
+            过滤后的IP数据列表
+        """
+        if not IPWHOIS_AVAILABLE:
+            print("警告: ipwhois模块不可用，无法进行地区过滤")
+            return ip_list
+
+        if not target_regions:
+            return ip_list
+
+        # 提取纯IP地址进行查询
+        ip_addresses = self.extract_ip_addresses(ip_list)
+        filtered_data = []
+
+        print(f"开始地区过滤，目标地区: {target_regions}")
+        print(f"需要查询 {len(ip_addresses)} 个IP地址...")
+
+        for i, (original_line, ip_address) in enumerate(zip(ip_list, ip_addresses)):
+            if show_progress and (i + 1) % 10 == 0:
+                print(f"进度: {i + 1}/{len(ip_addresses)}")
+
+            region = self.get_ip_region(ip_address)
+            if region and region in target_regions:
+                # 为IP添加地区标识
+                if '#' in original_line:
+                    filtered_data.append(f"{original_line}#{region}")
+                else:
+                    filtered_data.append(f"{original_line}#{region}")
+                print(f"✓ {ip_address} -> {region}")
+            elif region:
+                print(f"✗ {ip_address} -> {region} (不在目标地区)")
+            else:
+                print(f"? {ip_address} -> 无法确定地区")
+
+        print(f"地区过滤完成，从 {len(ip_list)} 个IP中筛选出 {len(filtered_data)} 个目标地区IP")
+        return filtered_data
+
+    def get_ips_by_regions(self, target_regions: List[str],
+                          max_latency: float = 100.0,
+                          include_html: bool = True,
+                          include_text: bool = True,
+                          include_api: bool = True,
+                          include_local: bool = True,
+                          max_workers: int = 10) -> Tuple[List[str], List[str]]:
+        """
+        获取指定地区的IP地址
+
+        Args:
+            target_regions: 目标地区代码列表（如 ['SG', 'TW', 'JP']）
+            max_latency: 最大延迟阈值
+            include_html: 是否包含HTML网站数据源
+            include_text: 是否包含文本文件数据源
+            include_api: 是否包含API数据源
+            include_local: 是否包含本地文件数据源
+            max_workers: 最大并发查询数
+
+        Returns:
+            元组：(完整IP数据列表, 纯IP地址列表)
+        """
+        # 首先获取所有IP数据
+        all_ips = self.get_all_ips(
+            html_urls=self.html_urls if include_html else [],
+            text_urls=self.text_urls if include_text else [],
+            api_sources=self.api_sources if include_api else [],
+            local_files=self.local_files if include_local else [],
+            include_all_sources=False
+        )
+
+        if not all_ips:
+            print("未获取到任何IP数据")
+            return [], []
+
+        # 去重
+        unique_ips = self.remove_duplicates(all_ips)
+
+        # 延迟过滤
+        latency_filtered = self.filter_by_latency(unique_ips, max_latency, keep_no_latency=True)
+
+        # 地区过滤
+        region_filtered = self.filter_by_regions(latency_filtered, target_regions, max_workers)
+
+        # 提取纯IP地址
+        ip_addresses = self.extract_ip_addresses(region_filtered)
+
+        return region_filtered, ip_addresses
     
     def save_to_file(self, ip_list: List[str], filename: str) -> None:
         """
@@ -578,33 +765,112 @@ def get_cloudflare_ips(max_latency: float = 100.0, limit: int = None, include_al
     return ip_addresses
 
 
-def get_singapore_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+def get_singapore_ips(max_latency: float = 100.0, limit: int = None, use_region_filter: bool = False) -> List[str]:
     """
-    便捷函数：获取新加坡IP地址（主要来自API和本地文件）
+    便捷函数：获取新加坡IP地址
 
     Args:
         max_latency: 最大延迟阈值（毫秒）
         limit: 限制返回的IP数量，None表示不限制
+        use_region_filter: 是否使用地区过滤（需要ipwhois模块）
 
     Returns:
         IP地址列表
     """
     extractor = IPExtractor()
 
-    # 主要从API、文本文件和本地文件获取数据
-    _, ip_addresses = extractor.get_ips_from_specific_sources(
-        include_html=False,
-        include_text=True,
-        include_api=True,
-        include_local=True,
-        max_latency=max_latency
-    )
+    if use_region_filter and IPWHOIS_AVAILABLE:
+        # 使用地区过滤获取新加坡IP
+        _, ip_addresses = extractor.get_ips_by_regions(
+            target_regions=['SG'],
+            max_latency=max_latency,
+            include_html=False,
+            include_text=True,
+            include_api=True,
+            include_local=True
+        )
+    else:
+        # 主要从API、文本文件和本地文件获取数据（原有方法）
+        _, ip_addresses = extractor.get_ips_from_specific_sources(
+            include_html=False,
+            include_text=True,
+            include_api=True,
+            include_local=True,
+            max_latency=max_latency
+        )
 
     if limit:
         ip_addresses = ip_addresses[:limit]
         print(f"限制返回前 {limit} 个新加坡IP地址")
 
     return ip_addresses
+
+
+def get_ips_by_regions(target_regions: List[str], max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """
+    便捷函数：获取指定地区的IP地址
+
+    Args:
+        target_regions: 目标地区代码列表（如 ['SG', 'TW', 'JP']）
+        max_latency: 最大延迟阈值（毫秒）
+        limit: 限制返回的IP数量，None表示不限制
+
+    Returns:
+        IP地址列表
+    """
+    if not IPWHOIS_AVAILABLE:
+        print("错误: 需要安装 ipwhois 模块才能使用地区过滤功能")
+        print("请运行: pip install ipwhois")
+        return []
+
+    extractor = IPExtractor()
+
+    # 使用地区过滤获取指定地区的IP
+    _, ip_addresses = extractor.get_ips_by_regions(
+        target_regions=target_regions,
+        max_latency=max_latency,
+        include_html=True,
+        include_text=True,
+        include_api=True,
+        include_local=True
+    )
+
+    if limit:
+        ip_addresses = ip_addresses[:limit]
+        print(f"限制返回前 {limit} 个IP地址")
+
+    return ip_addresses
+
+
+def get_taiwan_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取台湾IP地址"""
+    return get_ips_by_regions(['TW'], max_latency, limit)
+
+
+def get_japan_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取日本IP地址"""
+    return get_ips_by_regions(['JP'], max_latency, limit)
+
+
+def get_hongkong_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取香港IP地址"""
+    return get_ips_by_regions(['HK'], max_latency, limit)
+
+
+def get_korea_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取韩国IP地址"""
+    return get_ips_by_regions(['KR'], max_latency, limit)
+
+
+def get_us_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取美国IP地址"""
+    return get_ips_by_regions(['US'], max_latency, limit)
+
+
+def get_asia_ips(max_latency: float = 100.0, limit: int = None) -> List[str]:
+    """便捷函数：获取亚洲地区IP地址"""
+    asia_regions = ['SG', 'TW', 'JP', 'HK', 'KR', 'TH', 'MY', 'ID', 'PH', 'VN', 'IN']
+    return get_ips_by_regions(asia_regions, max_latency, limit)
 
 
 if __name__ == "__main__":

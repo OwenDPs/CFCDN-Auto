@@ -24,8 +24,19 @@
 
 ## 安装依赖
 
+### 基础功能
 ```bash
 pip install requests beautifulsoup4
+```
+
+### 地区过滤功能（可选）
+```bash
+pip install ipwhois
+```
+
+### 完整安装
+```bash
+pip install -r requirements.txt
 ```
 
 ## 基本使用
@@ -118,6 +129,36 @@ filtered_data, ip_addresses = extractor.get_ips_from_specific_sources(
 )
 ```
 
+#### 方法五：地区过滤（新功能）
+
+```python
+from ip_extractor import get_taiwan_ips, get_japan_ips, get_ips_by_regions
+
+# 获取台湾IP
+taiwan_ips = get_taiwan_ips(max_latency=100.0, limit=5)
+
+# 获取日本IP
+japan_ips = get_japan_ips(max_latency=100.0, limit=5)
+
+# 获取多个地区的IP
+multi_region_ips = get_ips_by_regions(
+    target_regions=['SG', 'TW', 'JP', 'HK'],  # 新加坡、台湾、日本、香港
+    max_latency=100.0,
+    limit=10
+)
+
+# 使用IP提取器进行高级地区过滤
+extractor = IPExtractor()
+filtered_data, ip_addresses = extractor.get_ips_by_regions(
+    target_regions=['TW', 'JP'],
+    max_latency=80.0,
+    include_html=False,  # 不使用HTML网站（更快）
+    include_text=True,   # 使用文本文件
+    include_api=True,    # 使用API
+    include_local=False  # 不使用本地文件
+)
+```
+
 ### 4. 保存数据到文件
 
 ```python
@@ -129,6 +170,38 @@ with open('ips_only.txt', 'w') as f:
     for ip in ip_addresses:
         f.write(ip + '\n')
 ```
+
+## 支持的地区代码
+
+IP提取器支持以下地区的过滤：
+
+| 地区代码 | 地区名称 | 关键词示例 |
+|---------|---------|-----------|
+| SG | 新加坡 | Singapore, 新加坡 |
+| TW | 台湾 | Taiwan, 台湾, 臺灣 |
+| JP | 日本 | Japan, 日本 |
+| HK | 香港 | Hong Kong, 香港 |
+| KR | 韩国 | Korea, 韩国, 南韩 |
+| US | 美国 | United States, 美国, USA |
+| UK | 英国 | United Kingdom, 英国, Britain |
+| DE | 德国 | Germany, 德国 |
+| FR | 法国 | France, 法国 |
+| CA | 加拿大 | Canada, 加拿大 |
+| AU | 澳大利亚 | Australia, 澳大利亚 |
+| IN | 印度 | India, 印度 |
+| TH | 泰国 | Thailand, 泰国 |
+| MY | 马来西亚 | Malaysia, 马来西亚 |
+| ID | 印尼 | Indonesia, 印尼 |
+| PH | 菲律宾 | Philippines, 菲律宾 |
+| VN | 越南 | Vietnam, 越南 |
+| RU | 俄罗斯 | Russia, 俄罗斯 |
+| BR | 巴西 | Brazil, 巴西 |
+| NL | 荷兰 | Netherlands, 荷兰 |
+| CH | 瑞士 | Switzerland, 瑞士 |
+| SE | 瑞典 | Sweden, 瑞典 |
+| NO | 挪威 | Norway, 挪威 |
+| FI | 芬兰 | Finland, 芬兰 |
+| DK | 丹麦 | Denmark, 丹麦 |
 
 ## 高级用法
 
@@ -271,7 +344,19 @@ while True:
 - `save_to_file(ip_list, filename)` - 保存到文件
 
 ### 便捷函数
-- `get_cloudflare_ips(max_latency=100.0, limit=None)` - 快速获取IP
+
+#### 通用函数
+- `get_cloudflare_ips(max_latency=100.0, limit=None, include_all_sources=True)` - 快速获取IP
+- `get_ips_by_regions(target_regions, max_latency=100.0, limit=None)` - 获取指定地区IP
+
+#### 地区专用函数
+- `get_singapore_ips(max_latency=100.0, limit=None, use_region_filter=False)` - 获取新加坡IP
+- `get_taiwan_ips(max_latency=100.0, limit=None)` - 获取台湾IP
+- `get_japan_ips(max_latency=100.0, limit=None)` - 获取日本IP
+- `get_hongkong_ips(max_latency=100.0, limit=None)` - 获取香港IP
+- `get_korea_ips(max_latency=100.0, limit=None)` - 获取韩国IP
+- `get_us_ips(max_latency=100.0, limit=None)` - 获取美国IP
+- `get_asia_ips(max_latency=100.0, limit=None)` - 获取亚洲地区IP
 
 ## 数据格式
 

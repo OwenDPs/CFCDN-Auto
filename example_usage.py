@@ -4,7 +4,11 @@ IP提取器使用示例
 这个文件展示了如何在其他程序中使用ip_extractor.py模块
 """
 
-from ip_extractor import IPExtractor, get_cloudflare_ips, get_singapore_ips
+from ip_extractor import (
+    IPExtractor, get_cloudflare_ips, get_singapore_ips,
+    get_ips_by_regions, get_taiwan_ips, get_japan_ips,
+    get_hongkong_ips, get_korea_ips, get_asia_ips
+)
 
 
 def example_basic_usage():
@@ -155,6 +159,80 @@ def example_different_data_sources():
     return all_ips
 
 
+def example_region_filtering():
+    """地区过滤示例"""
+    print("\n=== 地区过滤示例 ===")
+
+    # 使用便捷函数获取特定地区的IP
+    print("1. 使用便捷函数获取特定地区IP:")
+
+    # 获取台湾IP
+    print("   获取台湾IP:")
+    taiwan_ips = get_taiwan_ips(max_latency=100.0, limit=3)
+    for i, ip in enumerate(taiwan_ips, 1):
+        print(f"     {i}. {ip}")
+
+    # 获取日本IP
+    print("   获取日本IP:")
+    japan_ips = get_japan_ips(max_latency=100.0, limit=3)
+    for i, ip in enumerate(japan_ips, 1):
+        print(f"     {i}. {ip}")
+
+    # 获取香港IP
+    print("   获取香港IP:")
+    hk_ips = get_hongkong_ips(max_latency=100.0, limit=3)
+    for i, ip in enumerate(hk_ips, 1):
+        print(f"     {i}. {ip}")
+
+    print("\n2. 获取多个地区的IP:")
+    # 获取多个亚洲地区的IP
+    multi_region_ips = get_ips_by_regions(['SG', 'TW', 'JP', 'HK'], max_latency=100.0, limit=5)
+    print(f"   获取新加坡、台湾、日本、香港的IP:")
+    for i, ip in enumerate(multi_region_ips, 1):
+        print(f"     {i}. {ip}")
+
+    print("\n3. 使用IP提取器进行高级地区过滤:")
+    extractor = IPExtractor()
+
+    # 获取指定地区的IP（带详细信息）
+    filtered_data, ip_addresses = extractor.get_ips_by_regions(
+        target_regions=['TW', 'JP'],
+        max_latency=80.0,
+        include_html=False,  # 不使用HTML网站（速度更快）
+        include_text=True,   # 使用文本文件
+        include_api=True,    # 使用API
+        include_local=False  # 不使用本地文件
+    )
+
+    print(f"   高级过滤获取到 {len(ip_addresses)} 个台湾/日本IP")
+
+    return multi_region_ips
+
+
+def example_region_codes():
+    """地区代码示例"""
+    print("\n=== 支持的地区代码示例 ===")
+
+    extractor = IPExtractor()
+
+    print("支持的地区代码:")
+    for region_code, keywords in extractor.region_codes.items():
+        print(f"  {region_code}: {', '.join(keywords[:3])}...")  # 只显示前3个关键词
+
+    print(f"\n总共支持 {len(extractor.region_codes)} 个地区")
+
+    # 示例：获取欧洲地区的IP
+    print("\n获取欧洲地区IP示例:")
+    european_regions = ['UK', 'DE', 'FR', 'NL', 'CH', 'SE', 'NO', 'FI', 'DK']
+    try:
+        eu_ips = get_ips_by_regions(european_regions, max_latency=120.0, limit=3)
+        print(f"获取到 {len(eu_ips)} 个欧洲IP")
+        for i, ip in enumerate(eu_ips, 1):
+            print(f"  {i}. {ip}")
+    except Exception as e:
+        print(f"获取欧洲IP时出错: {e}")
+
+
 def example_for_other_programs():
     """供其他程序使用的示例"""
     print("\n=== 供其他程序使用的示例 ===")
@@ -258,6 +336,8 @@ def main():
         example_custom_sites()
         example_convenience_function()
         example_different_data_sources()
+        example_region_filtering()
+        example_region_codes()
         example_for_other_programs()
         example_integration_with_dns()
         
