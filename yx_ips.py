@@ -119,6 +119,11 @@ def process_site_data(url):
 
 # 主函数，处理所有网站的数据
 def main():
+    # 测试 API 连接
+    if not test_cf_api():
+        print("Cloudflare API 连接失败，请检查配置")
+        return
+        
     all_data = []
     for url in urls:
         site_data = process_site_data(url)
@@ -193,6 +198,63 @@ def add_dns_record(ip):
         print(f"Successfully created DNS record for IP: {ip}")
     else:
         print(f"Failed to create DNS record for IP: {ip}, status code: {response.status_code}, response: {response.text}")
+
+def test_cf_api():
+    """测试 Cloudflare API 连接"""
+    url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
+    headers = {
+        "Authorization": f"Bearer {CF_API_KEY}",
+        "X-Auth-Email": CF_API_EMAIL,
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.get(url, headers=headers)
+    print(f"API Test - Status: {response.status_code}")
+    print(f"API Test - Response: {response.text}")
+    
+    if response.status_code == 200:
+        zone_info = response.json()
+        print(f"Zone Name: {zone_info['result']['name']}")
+        return True
+    return False
+
+def test_cf_api():
+    """测试 Cloudflare API 连接"""
+    url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
+    headers = {
+        "Authorization": f"Bearer {CF_API_KEY}",
+        "X-Auth-Email": CF_API_EMAIL,
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.get(url, headers=headers)
+    print(f"API Test - Status: {response.status_code}")
+    print(f"API Test - Response: {response.text}")
+    
+    if response.status_code == 200:
+        zone_info = response.json()
+        print(f"Zone Name: {zone_info['result']['name']}")
+        return True
+    return False
+
+def test_cf_api():
+    """测试 Cloudflare API 连接"""
+    url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}"
+    headers = {
+        "Authorization": f"Bearer {CF_API_KEY}",
+        "X-Auth-Email": CF_API_EMAIL,
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.get(url, headers=headers)
+    print(f"API Test - Status: {response.status_code}")
+    print(f"API Test - Response: {response.text}")
+    
+    if response.status_code == 200:
+        zone_info = response.json()
+        print(f"Zone Name: {zone_info['result']['name']}")
+        return True
+    return False
 
 if __name__ == "__main__":
     main()
