@@ -143,11 +143,12 @@ def main():
     # 执行清空DNS记录的操作
     clear_dns_records()
     
-    # 从yx_ips.txt文件中提取IPv4地址
+    # 从yx_ips.txt文件中提取IPv4地址，只选择前2个IP
     with open("yx_ips.txt", "r") as file:
-        ipv4 = [line.split('#')[0] for line in file if '#' in line]
+        ipv4 = [line.split('#')[0] for line in file if '#' in line][:2]  # 只取前2个IP
 
     # 执行添加DNS记录的操作
+    print(f"将添加 {len(ipv4)} 个DNS记录（最多2个）")
     for ip in ipv4:
         add_dns_record(ip)
 
@@ -173,12 +174,8 @@ def clear_dns_records():
     else:
         print(f"Failed to fetch DNS records, status code: {response.status_code}, response: {response.text}")
 
-# 添加新的IPv4地址为DNS记录，在 add_dns_record 函数中添加调试输出
+# 添加新的IPv4地址为DNS记录
 def add_dns_record(ip):
-    # 重新获取 ipv4 地址
-    with open("yx_ips.txt", "r") as file:
-        ipv4 = [line.split('#')[0] for line in file if '#' in line]
-
     print(f"Adding DNS record for IP: {ip}")
     url = f"https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records"
     headers = {
