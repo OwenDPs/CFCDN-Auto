@@ -11,7 +11,7 @@ SGCS_FILE_PATH = 'CloudflareST/sgcs.txt'
 
 # 第一步：从URL和本地文件获取IP数据
 def get_ip_data():
-    url1 = 'https://raw.githubusercontent.com/ymyuuu/IPDB/main/bestproxy.txt'
+    url1 = 'https://github.com/ymyuuu/IPDB/blob/main/BestProxy/bestproxy%26country.txt'
 
     response1 = requests.get(url1)
     ip_list1 = response1.text.splitlines()
