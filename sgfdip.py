@@ -1,6 +1,7 @@
 import requests
 import os
 from ipwhois import IPWhois
+from ip_extractor import IPExtractor
 
 # 配置
 CF_API_KEY = os.getenv('CF_API_KEY')
@@ -9,77 +10,27 @@ CF_DOMAIN_NAME = os.getenv('CF_DOMAIN_NAME')  # 修正环境变量名
 FILE_PATH = 'sgfd_ips.txt'
 SGCS_FILE_PATH = 'CloudflareST/sgcs.txt'
 
-# 第一步：从URL和本地文件获取IP数据
+# 第一步：从多个数据源获取IP数据（使用IP提取器）
 def get_ip_data():
-    url1 = 'https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt'
+    print("=== 使用IP提取器获取IP数据 ===")
 
-    print(f"正在从URL获取IP数据: {url1}")
-    try:
-        response1 = requests.get(url1, timeout=10)
-        print(f"URL请求状态码: {response1.status_code}")
+    # 创建IP提取器实例
+    extractor = IPExtractor()
 
-        if response1.status_code == 200:
-            ip_list1 = response1.text.splitlines()
-            print(f"从URL获取到 {len(ip_list1)} 个IP地址")
-            # 显示前几个IP作为示例
-            if ip_list1:
-                print(f"URL中的前5个IP示例: {ip_list1[:5]}")
-        else:
-            print(f"URL请求失败，状态码: {response1.status_code}")
-            ip_list1 = []
-    except Exception as e:
-        print(f"从URL获取IP数据时出错: {e}")
-        ip_list1 = []
+    # 获取所有IP数据（包含文本文件、API和本地文件，不包含HTML网站）
+    ip_list = extractor.get_all_ips(
+        html_urls=[],  # 不使用HTML网站数据源
+        text_urls=None,  # 使用默认文本文件URL
+        api_sources=None,  # 使用默认API源
+        local_files=None,  # 使用默认本地文件
+        include_all_sources=False
+    )
 
-    # 从API获取优化IP数据
-    ip_list_api = []
-    print("正在从API获取优化IP数据...")
-    try:
-        headers = {'Content-Type': 'application/json'}
-        data = {"key": "o1zrmHAF", "type": "v4"}
-        response_api = requests.post('https://api.hostmonit.com/get_optimization_ip', json=data, headers=headers, timeout=10)
-        print(f"API请求状态码: {response_api.status_code}")
-        
-        if response_api.status_code == 200:
-            api_data = response_api.json()
-            if api_data.get('code') == 200 and 'info' in api_data:
-                # 提取所有线路的IP地址
-                for line_type in ['CM', 'CT', 'CU']:
-                    if line_type in api_data['info']:
-                        for item in api_data['info'][line_type]:
-                            ip_with_speed = f"{item['ip']}#{item['speed']}mb/s"
-                            ip_list_api.append(ip_with_speed)
-                print(f"从API获取到 {len(ip_list_api)} 个IP地址")
-                if ip_list_api:
-                    print(f"API中的前5个IP示例: {ip_list_api[:5]}")
-            else:
-                print("API响应格式异常")
-        else:
-            print(f"API请求失败，状态码: {response_api.status_code}")
-    except Exception as e:
-        print(f"从API获取IP数据时出错: {e}")
+    print(f"IP提取器获取到总共 {len(ip_list)} 个IP地址")
 
-    # 从本地文件获取IP数据
-    ip_list2 = []
-    print(f"检查本地文件: {SGCS_FILE_PATH}")
-    if os.path.exists(SGCS_FILE_PATH):
-        print(f"本地文件存在，正在读取...")
-        try:
-            with open(SGCS_FILE_PATH, 'r', encoding='utf-8') as f:
-                ip_list2 = f.read().splitlines()
-            print(f"从本地文件获取到 {len(ip_list2)} 个IP地址")
-            # 显示前几个IP作为示例
-            if ip_list2:
-                print(f"本地文件中的前5个IP示例: {ip_list2[:5]}")
-        except Exception as e:
-            print(f"读取本地文件时出错: {e}")
-            ip_list2 = []
-    else:
-        print(f"本地文件不存在: {SGCS_FILE_PATH}")
-
-    # 合并IP地址列表
-    ip_list = ip_list1 + ip_list_api + ip_list2
-    print(f"合并后总共有 {len(ip_list)} 个IP地址")
+    # 显示前几个IP作为示例
+    if ip_list:
+        print(f"前5个IP示例: {ip_list[:5]}")
 
     return ip_list
 
