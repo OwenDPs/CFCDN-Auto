@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-# Cloudflare API配置信息
+# Cloudflare API配置信息 - 与sgfdip.py保持一致
 CF_API_KEY = os.getenv('CF_API_KEY')
 CF_ZONE_ID = os.getenv('CF_ZONE_ID')
 CF_DOMAIN_NAME = os.getenv('CF_DOMAIN_NAME')
