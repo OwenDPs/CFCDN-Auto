@@ -31,6 +31,34 @@ def get_ip_data():
         print(f"从URL获取IP数据时出错: {e}")
         ip_list1 = []
 
+    # 从API获取优化IP数据
+    ip_list_api = []
+    print("正在从API获取优化IP数据...")
+    try:
+        headers = {'Content-Type': 'application/json'}
+        data = {"key": "o1zrmHAF", "type": "v4"}
+        response_api = requests.post('https://api.hostmonit.com/get_optimization_ip', json=data, headers=headers, timeout=10)
+        print(f"API请求状态码: {response_api.status_code}")
+        
+        if response_api.status_code == 200:
+            api_data = response_api.json()
+            if api_data.get('code') == 200 and 'info' in api_data:
+                # 提取所有线路的IP地址
+                for line_type in ['CM', 'CT', 'CU']:
+                    if line_type in api_data['info']:
+                        for item in api_data['info'][line_type]:
+                            ip_with_speed = f"{item['ip']}#{item['speed']}mb/s"
+                            ip_list_api.append(ip_with_speed)
+                print(f"从API获取到 {len(ip_list_api)} 个IP地址")
+                if ip_list_api:
+                    print(f"API中的前5个IP示例: {ip_list_api[:5]}")
+            else:
+                print("API响应格式异常")
+        else:
+            print(f"API请求失败，状态码: {response_api.status_code}")
+    except Exception as e:
+        print(f"从API获取IP数据时出错: {e}")
+
     # 从本地文件获取IP数据
     ip_list2 = []
     print(f"检查本地文件: {SGCS_FILE_PATH}")
@@ -50,7 +78,7 @@ def get_ip_data():
         print(f"本地文件不存在: {SGCS_FILE_PATH}")
 
     # 合并IP地址列表
-    ip_list = ip_list1 + ip_list2
+    ip_list = ip_list1 + ip_list_api + ip_list2
     print(f"合并后总共有 {len(ip_list)} 个IP地址")
 
     return ip_list
