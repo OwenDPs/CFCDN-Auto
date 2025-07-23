@@ -60,7 +60,7 @@ class IPExtractor:
         # 支持的文本文件URL（纯IP列表）
         self.text_urls = [
             "https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt",
-            "https://ipdb.api.030101.xyz/?type=cfv4;cfv6;proxy"
+            "https://ipdb.api.030101.xyz/?type=cfv4&country=true&down=true"
         ]
 
         # 地区代码映射
@@ -564,14 +564,16 @@ class IPExtractor:
             show_progress: 是否显示进度
 
         Returns:
-            过滤后的IP数据列表
+            过滤后的IP数据列表，如果没有符合条件的IP则返回空列表
         """
         if not IPWHOIS_AVAILABLE:
-            print("警告: ipwhois模块不可用，无法进行地区过滤")
-            return ip_list
+            print("错误: ipwhois模块不可用，无法进行地区过滤")
+            print("请安装ipwhois模块: pip install ipwhois")
+            return []  # 严格返回空列表，不返回原始数据
 
         if not target_regions:
-            return ip_list
+            print("警告: 未指定目标地区，返回空列表")
+            return []
 
         # 提取纯IP地址进行查询
         ip_addresses = self.extract_ip_addresses(ip_list)
@@ -621,7 +623,17 @@ class IPExtractor:
 
         Returns:
             元组：(完整IP数据列表, 纯IP地址列表)
+            如果没有符合条件的IP，返回 ([], [])
         """
+        # 严格检查前置条件
+        if not IPWHOIS_AVAILABLE:
+            print("错误: ipwhois模块不可用，无法进行地区过滤")
+            print("请安装ipwhois模块: pip install ipwhois")
+            return [], []
+
+        if not target_regions:
+            print("错误: 未指定目标地区")
+            return [], []
         # 首先获取所有IP数据
         all_ips = self.get_all_ips(
             html_urls=self.html_urls if include_html else [],
@@ -816,11 +828,15 @@ def get_ips_by_regions(target_regions: List[str], max_latency: float = 100.0, li
         limit: 限制返回的IP数量，None表示不限制
 
     Returns:
-        IP地址列表
+        IP地址列表，如果没有符合条件的IP则返回空列表
     """
     if not IPWHOIS_AVAILABLE:
         print("错误: 需要安装 ipwhois 模块才能使用地区过滤功能")
         print("请运行: pip install ipwhois")
+        return []
+
+    if not target_regions:
+        print("错误: 未指定目标地区")
         return []
 
     extractor = IPExtractor()
@@ -835,7 +851,11 @@ def get_ips_by_regions(target_regions: List[str], max_latency: float = 100.0, li
         include_local=True
     )
 
-    if limit:
+    if not ip_addresses:
+        print(f"未找到符合条件的IP地址（地区: {target_regions}, 延迟<{max_latency}ms）")
+        return []
+
+    if limit and len(ip_addresses) > limit:
         ip_addresses = ip_addresses[:limit]
         print(f"限制返回前 {limit} 个IP地址")
 
