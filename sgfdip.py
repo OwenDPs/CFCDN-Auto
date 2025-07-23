@@ -17,14 +17,23 @@ def get_ip_data():
     # 创建IP提取器实例
     extractor = IPExtractor()
 
-    # 获取所有IP数据（包含文本文件、API和本地文件，不包含HTML网站）
-    ip_list = extractor.get_all_ips(
-        html_urls=[],  # 不使用HTML网站数据源
-        text_urls=None,  # 使用默认文本文件URL
-        api_sources=None,  # 使用默认API源
-        local_files=None,  # 使用默认本地文件
-        include_all_sources=False
+    # 方法1：使用专门的数据源组合（文本文件、API和本地文件）
+    print("正在网站数据源、从文本文件、API和本地文件获取IP数据...")
+    _, ip_addresses = extractor.get_ips_from_specific_sources(
+        include_html=True,  # 使用HTML网站数据源
+        include_text=True,   # 使用文本文件URL
+        include_api=True,    # 使用API源
+        include_local=True,  # 使用本地文件
+        max_latency=1000.0   # 设置较高的延迟阈值，因为有些数据没有延迟信息
     )
+
+    # 如果上面的方法没有获取到数据，尝试从所有数据源获取
+    if not ip_addresses:
+        print("从特定数据源未获取到数据，尝试从所有数据源获取...")
+        _, ip_addresses = extractor.get_processed_ips(max_latency=1000.0)
+
+    # 将IP地址转换为原始格式（sgfdip.py期望的格式）
+    ip_list = ip_addresses  # 这里返回纯IP地址列表
 
     print(f"IP提取器获取到总共 {len(ip_list)} 个IP地址")
 
