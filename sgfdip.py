@@ -11,7 +11,7 @@ SGCS_FILE_PATH = 'CloudflareST/sgcs.txt'
 
 # 第一步：从URL和本地文件获取IP数据
 def get_ip_data():
-    url1 = 'https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/bestproxy%26country.txt'
+    url1 = 'https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt'
 
     print(f"正在从URL获取IP数据: {url1}")
     try:
