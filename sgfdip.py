@@ -17,20 +17,30 @@ def get_ip_data():
     # 创建IP提取器实例
     extractor = IPExtractor()
 
-    # 方法1：使用专门的数据源组合（文本文件、API和本地文件）
-    print("正在网站数据源、从文本文件、API和本地文件获取IP数据...")
-    _, ip_addresses = extractor.get_ips_from_specific_sources(
-        include_html=True,  # 使用HTML网站数据源
-        include_text=True,   # 使用文本文件URL
-        include_api=True,    # 使用API源
-        include_local=True,  # 使用本地文件
-        max_latency=1000.0   # 设置较高的延迟阈值，因为有些数据没有延迟信息
-    )
-
-    # 如果上面的方法没有获取到数据，尝试从所有数据源获取
-    if not ip_addresses:
-        print("从特定数据源未获取到数据，尝试从所有数据源获取...")
-        _, ip_addresses = extractor.get_processed_ips(max_latency=1000.0)
+    # 使用地区过滤获取新加坡、台湾、日本的IP（延迟小于200ms）
+    print("正在获取新加坡、台湾、日本的IP数据（延迟<200ms）...")
+    try:
+        _, ip_addresses = extractor.get_ips_by_regions(
+            target_regions=['SG', 'TW', 'JP'],  # 新加坡、台湾、日本
+            max_latency=200.0,                  # 延迟小于200ms
+            include_html=True,                  # 使用HTML网站数据源
+            include_text=True,                  # 使用文本文件URL
+            include_api=True,                   # 使用API源
+            include_local=True,                 # 使用本地文件
+            max_workers=10                      # 并发查询数
+        )
+        print(f"地区过滤获取到 {len(ip_addresses)} 个符合条件的IP")
+    except Exception as e:
+        print(f"地区过滤失败: {e}")
+        print("回退到普通方法获取IP...")
+        # 如果地区过滤失败，回退到普通方法
+        _, ip_addresses = extractor.get_ips_from_specific_sources(
+            include_html=True,   # 使用HTML网站数据源
+            include_text=True,   # 使用文本文件URL
+            include_api=True,    # 使用API源
+            include_local=True,  # 使用本地文件
+            max_latency=200.0    # 延迟小于200ms
+        )
 
     # 将IP地址转换为原始格式（sgfdip.py期望的格式）
     ip_list = ip_addresses  # 这里返回纯IP地址列表
