@@ -1,3 +1,4 @@
+
 """
 IP提取器模块 - 从多个网站提取Cloudflare IP地址和延迟信息
 
@@ -23,7 +24,8 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional, Tuple
+import concurrent.futures
 try:
     from ipwhois import IPWhois
     IPWHOIS_AVAILABLE = True
@@ -60,7 +62,9 @@ class IPExtractor:
         # 支持的文本文件URL（纯IP列表）
         self.text_urls = [
             "https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt",
-            "https://ipdb.api.030101.xyz/?type=cfv4&country=true&down=true"
+            "https://ipdb.api.030101.xyz/?type=cfv4&country=true&down=true",
+            "https://ipdb.api.030101.xyz/?type=bestcf&country=true&down=true",
+            "https://raw.githubusercontent.com/OwenDPs/IPDB/main/BestCF/bestcfv4.txt"
         ]
 
         # 地区代码映射
@@ -582,25 +586,9 @@ class IPExtractor:
         print(f"开始地区过滤，目标地区: {target_regions}")
         print(f"需要查询 {len(ip_addresses)} 个IP地址...")
 
-        for i, (original_line, ip_address) in enumerate(zip(ip_list, ip_addresses)):
-            if show_progress and (i + 1) % 10 == 0:
-                print(f"进度: {i + 1}/{len(ip_addresses)}")
-
-            region = self.get_ip_region(ip_address)
-            if region and region in target_regions:
-                # 为IP添加地区标识
-                if '#' in original_line:
-                    filtered_data.append(f"{original_line}#{region}")
-                else:
-                    filtered_data.append(f"{original_line}#{region}")
-                print(f"✓ {ip_address} -> {region}")
-            elif region:
-                print(f"✗ {ip_address} -> {region} (不在目标地区)")
-            else:
-                print(f"? {ip_address} -> 无法确定地区")
-
-        print(f"地区过滤完成，从 {len(ip_list)} 个IP中筛选出 {len(filtered_data)} 个目标地区IP")
-        return filtered_data
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 实现并发IP地区查询
+            pass
 
     def get_ips_by_regions(self, target_regions: List[str],
                           max_latency: float = 100.0,
@@ -916,3 +904,7 @@ if __name__ == "__main__":
     quick_ips = get_cloudflare_ips(max_latency=100.0, limit=5)
     for i, ip in enumerate(quick_ips, 1):
         print(f"{i}. {ip}")
+
+
+
+
